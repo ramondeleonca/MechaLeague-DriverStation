@@ -1,11 +1,64 @@
 import { Cog, Info, Rocket, Usb } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import useWebSocket, { ReadyState } from "react-use-websocket";
+import GridLayout from "react-grid-layout";
+import { useEffect, useState } from "react";
 
 export default function App() {
+  // WebSocket
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { getWebSocket, lastJsonMessage, lastMessage, readyState, sendJsonMessage, sendMessage } = useWebSocket("ws://127.0.0.1:81", {
+    heartbeat: {
+      interval: 1000,
+      message: "ping",
+      returnMessage: "pong",
+      timeout: 6000
+    },
+    reconnectAttempts: 100_000_000_000_000,
+    retryOnError: true,
+    reconnectInterval: 3000,
+    protocols: ["ws", "wss", "http", "https"],
+    // share: true
+  });
+
+  // States
+  const [enabled, setEnabled] = useState(false);
+  const [mode, setMode] = useState("teleop");
+  const [presedKeys, setPressedKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", (e) => {
+      setPressedKeys(curr => curr.includes(e.key) ? curr : [...curr, e.key]);
+    });
+
+    window.addEventListener("keyup", (e) => {
+      setPressedKeys(curr => curr.filter(key => key != e.key));
+    });
+  }, []);
+
+  useEffect(() => {
+    sendJsonMessage({
+      enabled: enabled ? "enabled" : "disabled",
+      mode: mode,
+      time: Date.now(),
+      keys: presedKeys
+    })
+  }, [enabled, mode, presedKeys, sendJsonMessage]);
+
+  const layout = [
+    { i: "a", x: 0, y: 0, w: 1, h: 2, static: true },
+    { i: "b", x: 1, y: 0, w: 3, h: 2, minW: 2, maxW: 4 },
+    { i: "c", x: 4, y: 0, w: 1, h: 2 }
+  ];
+  
   return (
     <div className="w-full h-full flex flex-col">
       <div className="w-full flex-grow">
-        Dash
+        <GridLayout className="layout !h-full" layout={layout} cols={12} rowHeight={30} maxRows={19} verticalCompact={false} allowOverlap width={1200}>
+          <div key="a" className="bg-red-500">a</div>
+          <div key="b" className="bg-blue-500">b</div>
+          <div key="c" className="bg-green-500">c</div>
+        </GridLayout>
       </div>
       <div className="w-full h-[200px] bg-bg flex">
         <Tabs defaultValue="drive" className="flex w-full">
@@ -23,7 +76,7 @@ export default function App() {
                 {/* Modes */}
                 <div className="modes flex flex-col">
                   <label className="flex items-center pl-3 border-2 border-[#2d2d2d] has-[input:checked]:bg-[#2d2d2d] relative">
-                    <input type="radio" name="mode" value="teleop" className="hidden absolute` w-full h-full z-10" />
+                    <input type="radio" name="mode" value="teleop" className="hidden absolute` w-full h-full z-10" defaultChecked />
                     TeleOperated
                   </label>
                   <label className="flex items-center pl-3 border-x-2 border-[#2d2d2d] has-[input:checked]:bg-[#2d2d2d] relative">
@@ -57,17 +110,17 @@ export default function App() {
                 <div className="flex flex-col items-end mt-4">
                   <div className="flex items-center">
                     <h1 className="mr-2 leading-none">Communications</h1>
-                    <div className="w-4 h-3 bg-[#ff0000]"></div>
+                    <div className={`w-5 h-3 mt-1 ${readyState == ReadyState.OPEN ? "bg-[#00ff00]" : "bg-[#ff0000]"}`}></div>
                   </div>
 
                   <div className="flex items-center">
                     <h1 className="mr-2 leading-none">Robot Code</h1>
-                    <div className="w-4 h-3 bg-[#ff0000]"></div>
+                    <div className={`w-5 h-3 mt-1 ${"bg-[#ff0000]"}`}></div>
                   </div>
 
                   <div className="flex items-center">
                     <h1 className="mr-2 leading-none">Joysticks</h1>
-                    <div className="w-4 h-3 bg-[#ff0000]"></div>
+                    <div className={`w-5 h-3 mt-1 ${"bg-[#ff0000]"}`}></div>
                   </div>
                 </div>
 
@@ -81,7 +134,7 @@ export default function App() {
             {/* Console */}
             <div className="p-2 m-2 rounded-md !bg-[#464646] flex flex-col flex-grow">
               <h1 className="leading-none">Console</h1>
-              <textarea name="console" id="console" className="bg-[#2d2d2d] resize-none flex-grow overflow-y-auto outline-none rounded-md my-1 px-4 pb-8 pt-2">
+              <textarea name="console" id="console" readOnly className="bg-[#2d2d2d] resize-none flex-grow overflow-y-auto outline-none rounded-md my-1 px-4 pb-8 pt-2">
                 Lorem ipsum dolor sit, amet consectetur adipisicing elit. Commodi eos sint porro praesentium omnis, voluptate nam ut sequi reprehenderit. Ipsam expedita similique ducimus, ab, nostrum veritatis magni vel voluptatum quasi, soluta atque aliquid nobis? Perferendis error sunt, sed consectetur vitae rerum tempora nostrum magnam, natus nobis enim beatae unde reiciendis!
                 Lorem ipsum dolor sit, amet consectetur adipisicing elit. Commodi eos sint porro praesentium omnis, voluptate nam ut sequi reprehenderit. Ipsam expedita similique ducimus, ab, nostrum veritatis magni vel voluptatum quasi, soluta atque aliquid nobis? Perferendis error sunt, sed consectetur vitae rerum tempora nostrum magnam, natus nobis enim beatae unde reiciendis!
               </textarea>
